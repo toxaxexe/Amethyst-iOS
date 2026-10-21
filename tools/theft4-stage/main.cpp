@@ -5,7 +5,7 @@
 #include <exception>
 #include <thread>
 
-int main(int argc, char** argv) {
+int wmain(int argc, wchar_t** argv) {
   if (argc != 4) {
     std::fprintf(stderr, "Usage: theft4_stage <base ISO> <TU8 package> <NEW destination>\n");
     return 2;
