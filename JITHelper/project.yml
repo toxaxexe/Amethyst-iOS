@@ -1,0 +1,30 @@
+name: AmethystJIT
+options:
+  deploymentTarget:
+    iOS: "17.4"
+targets:
+  AMJITHelper:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Handler.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.angelauramc.amethyst.JITHelper
+        INFOPLIST_FILE: Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "5.0"
+        CODE_SIGNING_ALLOWED: NO
+        APPLICATION_EXTENSION_API_ONLY: NO
+        ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
+    dependencies:
+      - framework: ../personal-build/StikJIT.xcframework
+        embed: true
+        codeSign: false
+schemes:
+  AMJITHelper:
+    build:
+      targets:
+        AMJITHelper: all
