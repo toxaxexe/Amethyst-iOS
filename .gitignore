@@ -14,3 +14,7 @@ project.xcworkspace/
 /depends
 /Natives/config.h
 entitlements.codesign.xml
+# Personal build products; never commit pairing files or signing credentials.
+personal-build/
+JITHelper/AmethystJIT.xcodeproj/
+**/pairingFile.plist
