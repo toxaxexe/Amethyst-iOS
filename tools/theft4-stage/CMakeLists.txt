@@ -1,0 +1,32 @@
+cmake_minimum_required(VERSION 3.29)
+project(Theft4StageWindows LANGUAGES C CXX)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+if(NOT THEFT4_SOURCE)
+  message(FATAL_ERROR "Set THEFT4_SOURCE to the checked-out Theft4 sources")
+endif()
+set(REXGLUE_CORE_ONLY ON CACHE BOOL "" FORCE)
+set(REXGLUE_RUNTIME_ONLY OFF CACHE BOOL "" FORCE)
+set(REXGLUE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(REXGLUE_USE_D3D12 OFF CACHE BOOL "" FORCE)
+set(REXGLUE_USE_VULKAN OFF CACHE BOOL "" FORCE)
+set(REXGLUE_ENABLE_TRACY OFF CACHE BOOL "" FORCE)
+set(REXGLUE_ENABLE_PERF_COUNTERS OFF CACHE BOOL "" FORCE)
+set(SDK "${THEFT4_SOURCE}/glue/rexglue-sdk-main")
+add_subdirectory("${SDK}" sdk)
+include(FetchContent)
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(zlib GIT_REPOSITORY https://github.com/madler/zlib.git GIT_TAG v1.3.1 GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(zlib)
+set(INSTALL_SOURCE "${SDK}/gta4-recomp/src/install")
+add_executable(theft4_stage
+  main.cpp
+  "${INSTALL_SOURCE}/gta4_source_inspector.cpp"
+  "${INSTALL_SOURCE}/gta4_installer.cpp"
+  "${INSTALL_SOURCE}/gta4_rpf_extractor.cpp"
+  "${SDK}/thirdparty/crypto/rijndael-alg-fst.c")
+target_include_directories(theft4_stage PRIVATE "${INSTALL_SOURCE}" "${SDK}/thirdparty/crypto" "${zlib_SOURCE_DIR}" "${zlib_BINARY_DIR}")
+target_compile_definitions(theft4_stage PRIVATE REX_PLATFORM_WINDOWS=1 FMT_USE_CONSTEVAL=0 GTA4_RPF_AES_KEY_SOURCE="aes_key.bin")
+target_link_libraries(theft4_stage PRIVATE rex::filesystem xxHash::xxhash zlibstatic ws2_32 bcrypt dbghelp shlwapi shell32 ole32 user32 ntdll advapi32)
+set_target_properties(theft4_stage PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
