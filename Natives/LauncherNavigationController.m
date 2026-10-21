@@ -1,6 +1,7 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "authenticator/BaseAuthenticator.h"
 #import "AFNetworking.h"
+#import "AMBuiltInJIT.h"
 #import "ALTServerConnection.h"
 #import "CustomControlsViewController.h"
 #import "DownloadProgressViewController.h"
@@ -172,6 +173,7 @@ static void *ProgressObserverContext = &ProgressObserverContext;
     NSString *versionPath = [NSString stringWithFormat:@"%s/versions/", getenv("GAME_DIR")];
     NSArray *list = [fileManager contentsOfDirectoryAtPath:versionPath error:Nil];
     for (NSString *versionId in list) {
+        if (![versionId isEqualToString:@"1.19.1"]) continue;
         if (![self isVersionInstalled:versionId]) continue;
         [localVersionList addObject:@{
             @"id": versionId,
@@ -182,18 +184,17 @@ static void *ProgressObserverContext = &ProgressObserverContext;
 
 - (void)fetchRemoteVersionList {
     [(id)(self.buttonInstall ?: self.buttonInstallItem) setEnabled:NO];
-    remoteVersionList = @[
-        @{@"id": @"latest-release", @"type": @"release"},
-        @{@"id": @"latest-snapshot", @"type": @"snapshot"}
-    ].mutableCopy;
+    remoteVersionList = [NSMutableArray new];
 
     AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
     [manager GET:@"https://piston-meta.mojang.com/mc/game/version_manifest_v2.json" parameters:nil headers:nil progress:^(NSProgress * _Nonnull progress) {
         self.progressViewMain.progress = progress.fractionCompleted;
     } success:^(NSURLSessionTask *task, NSDictionary *responseObject) {
-        [remoteVersionList addObjectsFromArray:responseObject[@"versions"]];
+        for (NSDictionary *version in responseObject[@"versions"]) {
+            if ([version[@"id"] isEqualToString:@"1.19.1"]) [remoteVersionList addObject:version];
+        }
         NSDebugLog(@"[VersionList] Got %d versions", remoteVersionList.count);
-        setPrefObject(@"internal.latest_version", responseObject[@"latest"]);
+        setPrefObject(@"internal.latest_version", @{@"release": @"1.19.1", @"snapshot": @"1.19.1"});
         [(id)(self.buttonInstall ?: self.buttonInstallItem) setEnabled:YES];
     } failure:^(NSURLSessionTask *operation, NSError *error) {
         NSDebugLog(@"[VersionList] Warning: Unable to fetch version list: %@", error.localizedDescription);
@@ -294,7 +295,7 @@ static void *ProgressObserverContext = &ProgressObserverContext;
 
     [self setInteractionEnabled:NO forDownloading:YES];
 
-    NSString *versionId = PLProfiles.current.profiles[self.versionTextField.text][@"lastVersionId"];
+    NSString *versionId = @"1.19.1";
     NSDictionary *object = [remoteVersionList filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"(id == %@)", versionId]].firstObject;
     if (!object) {
         object = @{
@@ -427,6 +428,11 @@ static void *ProgressObserverContext = &ProgressObserverContext;
     BOOL hasTrollStoreJIT = getEntitlementValue(@"jb.pmap_cs.custom_trust");
     BOOL isLiveContainer = getenv("LC_HOME_PATH") != NULL;
 
+    if (!isJITEnabled(false) && [[AMBuiltInJIT method] isEqualToString:@"builtin"]) {
+        [[AMBuiltInJIT shared] enableFrom:self attached:handler];
+        return;
+    }
+
     if (isJITEnabled(false)) {
         [ALTServerManager.sharedManager stopDiscovering];
         handler();
@@ -439,13 +445,27 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         NSLog(@"Debug option skipped waiting for JIT. Java might not work.");
         handler();
         return;
+    } else if ([[AMBuiltInJIT method] isEqualToString:@"wait"]) {
+        // Preserve the external debugger wait path without opening another app.
     } else if (@available(iOS 17.4, *)) {
         NSString *scriptDataString = @"";
         if(DeviceHasJITFlags(JIT_FLAG_FORCE_MIRRORED | JIT_FLAG_HAS_TXM)) {
             NSData *scriptData = [NSData dataWithContentsOfFile:[NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"UniversalJIT26.js"]];
             scriptDataString = [@"&script-data=" stringByAppendingString:[scriptData base64EncodedStringWithOptions:0]];
         }
-        [UIApplication.sharedApplication openURL:[NSURL URLWithString:[NSString stringWithFormat:@"stikjit://enable-jit?bundle-id=%@&pid=%d%@", NSBundle.mainBundle.bundleIdentifier, getpid(), scriptDataString]] options:@{} completionHandler:nil];
+        NSURLComponents *request = [NSURLComponents new];
+        request.scheme = @"stikdebug";
+        request.host = @"enable-jit";
+        NSMutableArray *query = @[
+            [NSURLQueryItem queryItemWithName:@"bundle-id" value:NSBundle.mainBundle.bundleIdentifier],
+            [NSURLQueryItem queryItemWithName:@"pid" value:[NSString stringWithFormat:@"%d", getpid()]]
+        ].mutableCopy;
+        if (scriptDataString.length) {
+            NSData *script = [NSData dataWithContentsOfURL:[NSBundle.mainBundle URLForResource:@"UniversalJIT26" withExtension:@"js"]];
+            [query addObject:[NSURLQueryItem queryItemWithName:@"script-data" value:[script base64EncodedStringWithOptions:0]]];
+        }
+        request.queryItems = query;
+        [UIApplication.sharedApplication openURL:request.URL options:@{} completionHandler:nil];
     } else {
         // Assuming 16.7-17.3.1. SideStore still lacks this URL scheme at the time of writing, so it only jumps to SideStore.
         [UIApplication.sharedApplication openURL:[NSURL URLWithString:[NSString stringWithFormat:@"sidestore://sidejit-enable?pid=%d", getpid()]] options:@{} completionHandler:nil];

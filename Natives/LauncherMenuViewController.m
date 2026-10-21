@@ -1,6 +1,7 @@
 #import "authenticator/BaseAuthenticator.h"
 #import "AccountListViewController.h"
 #import "AFNetworking.h"
+#import "AMBuiltInJIT.h"
 #import "ALTServerConnection.h"
 #import "LauncherNavigationController.h"
 #import "LauncherMenuViewController.h"
@@ -64,6 +65,9 @@
         [LauncherMenuCustomItem vcClass:LauncherProfilesViewController.class],
         [LauncherMenuCustomItem vcClass:LauncherPreferencesViewController.class],
     ].mutableCopy;
+    [self.options addObject:[LauncherMenuCustomItem title:@"JIT / Minecraft 1.19.1" imageName:@"bolt.fill" action:^{
+        [[AMBuiltInJIT shared] showSettingsFrom:contentNavigationController.topViewController];
+    }]];
     if (realUIIdiom != UIUserInterfaceIdiomTV) {
         [self.options addObject:(id)[LauncherMenuCustomItem
                                      title:localize(@"launcher.menu.custom_controls", nil)

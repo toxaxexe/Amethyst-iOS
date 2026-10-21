@@ -94,6 +94,7 @@ target_link_libraries(AmethystAccountJNI)
 
 # Angel Aura Amethyst
 add_executable(AngelAuraAmethyst
+  AMBuiltInJIT.m
   dyld_bypass_validation.m
   dyld_patch_platform.m
   main.m

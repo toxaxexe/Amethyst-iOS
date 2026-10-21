@@ -14,7 +14,8 @@ static PLProfiles* current;
         @"profiles": @{
             @"(Default)": @{
                 @"name": @"(Default)",
-                @"lastVersionId": @"latest-release"
+                @"lastVersionId": @"1.19.1",
+                @"javaVersion": @"17"
             }
         },
         @"selectedProfile": @"(Default)"
@@ -57,6 +58,8 @@ static PLProfiles* current;
 }
 
 + (id)resolveKeyForCurrentProfile:(id)key {
+    if ([key isEqualToString:@"lastVersionId"]) return @"1.19.1";
+    if ([key isEqualToString:@"javaVersion"]) return @"17";
     return [self profile:self.current.selectedProfile resolveKey:key];
 }
 

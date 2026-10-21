@@ -49,6 +49,8 @@
 
     // Obtain all the lists
     self.oldName = self.getPreference(nil, @"name");
+    self.profile[@"lastVersionId"] = @"1.19.1";
+    self.profile[@"javaVersion"] = @"17";
     if ([self.oldName length] == 0) {
         self.setPreference(nil, @"name", @"New Profile");
     }
@@ -101,7 +103,8 @@
               @"title": @"preference.profile.title.version",
               @"type": typeVersionPicker,
               @"placeholder": self.getPreference(nil, @"lastVersionId"),
-              @"customClass": PickTextField.class
+              @"customClass": PickTextField.class,
+              @"enableCondition": ^BOOL(){ return NO; }
             },
             @{@"key": @"gameDir",
               @"icon": @"folder",
@@ -137,7 +140,8 @@
               @"title": @"preference.manage_runtime.header.default",
               @"type": self.typePickField,
               @"pickKeys": javaList,
-              @"pickList": javaList
+              @"pickList": javaList,
+              @"enableCondition": ^BOOL(){ return NO; }
             },
             @{@"key": @"javaArgs",
               @"icon": @"slider.vertical.3",
