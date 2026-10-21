@@ -1,0 +1,58 @@
+name: Build Theft4 staging tool for Windows
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  stage-tool:
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          repository: KoreanSeats1/Theft4
+          ref: 88115fefad59cfcb62d17c0c9548a7a900c01a23
+          path: Theft4
+      - name: Fetch only installer dependencies
+        shell: pwsh
+        run: |
+          $deps = @('cli11','libmspack','tomlplusplus','simde','xxHash','spdlog','fmt','utfcpp','o1heap')
+          $paths = $deps | ForEach-Object { 'glue/rexglue-sdk-main/thirdparty/' + $_ }
+          git -C Theft4 submodule update --init --depth 1 -- $paths
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Enable filesystem-only SDK target
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          sdk = Path('Theft4/glue/rexglue-sdk-main')
+          p = sdk/'CMakeLists.txt'
+          s = p.read_text()
+          assert s.count('add_subdirectory(src/core)') == 1
+          p.write_text(s.replace('add_subdirectory(src/core)', 'add_subdirectory(src/core)\nadd_subdirectory(src/filesystem)'))
+          p = sdk/'thirdparty/CMakeLists.txt'
+          s = p.read_text()
+          s, n = re.subn(r'set\(REQUIRED_SUBMODULES\s.*?\n\)', 'set(REQUIRED_SUBMODULES cli11 libmspack tomlplusplus simde xxHash spdlog fmt utfcpp)', s, count=1, flags=re.S)
+          assert n == 1
+          p.write_text(s)
+      - name: Configure Clang and Windows SDK
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Build validated upstream installer
+        shell: pwsh
+        run: |
+          cmake -S tools/theft4-stage -B stage-build -G Ninja -DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl -DCMAKE_BUILD_TYPE=Release "-DTHEFT4_SOURCE=$pwd/Theft4"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          cmake --build stage-build --target theft4_stage --parallel 4
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Check CLI entry point
+        shell: pwsh
+        run: |
+          & ./stage-build/bin/theft4_stage.exe
+          if ($LASTEXITCODE -ne 2) { throw 'Unexpected staging-tool self-check result' }
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: theft4-stage-windows
+          path: stage-build/bin/theft4_stage.exe
+          if-no-files-found: error
