@@ -18,7 +18,7 @@ git -C personal-build/StikJIT checkout --detach "$stik_commit"
   xcodegen generate
   xcodebuild archive -project StikJIT.xcodeproj -scheme StikJIT \
     -destination 'generic/platform=iOS' -archivePath ../StikJIT-iOS \
-    SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES CODE_SIGNING_ALLOWED=NO
+    SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES CODE_SIGNING_ALLOWED=NO APPLICATION_EXTENSION_API_ONLY=YES
 )
 if [[ ! -d personal-build/StikJIT.xcframework ]]; then
   xcodebuild -create-xcframework \
