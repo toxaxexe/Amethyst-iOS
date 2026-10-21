@@ -10,7 +10,10 @@ int main(int argc, char** argv) {
     std::fprintf(stderr, "Usage: theft4_stage <base ISO> <TU8 package> <NEW destination>\n");
     return 2;
   }
-  rex::InitLogging();
+  rex::LogConfig log_config;
+  log_config.log_to_console = true;
+  log_config.default_level = spdlog::level::trace;
+  rex::InitLogging(log_config);
   int status = 1;
   try {
     auto destination = std::filesystem::absolute(argv[3]).lexically_normal();
